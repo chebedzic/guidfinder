@@ -2,15 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FindGuidFinder
 {
     class Program
     {
-        private static List<string> keys = new List<string>();
-        private static string guid;
+        private static Dictionary<string,List<string>> guidRefPair = new Dictionary<string, List<string>>();
+        private static List<string> guids = new List<string>();
         static void Main(string[] args)
         {
             Console.WriteLine("Enter path you want to be searched.");
@@ -18,19 +16,20 @@ namespace FindGuidFinder
             while (true)
             {
                 Console.WriteLine("Please enter guid of a file you want to find references.");
-                guid = Console.ReadLine();
-                if (string.IsNullOrEmpty(guid))
+                string guidtemp= Console.ReadLine();
+                if (string.IsNullOrEmpty(guidtemp))
                     continue;
+                guids.Add(guidtemp);
                 if (Directory.Exists(path))
                 {
                     searchPath(new DirectoryInfo(path));
                 }
-                Console.WriteLine($"Found {keys.Count} matches");
-                foreach (var prefab in keys)
+                foreach (var guid in guidRefPair)
                 {
-                    Console.WriteLine(prefab);
+                    Console.WriteLine($"Found {guidRefPair.SelectMany(x => x.Value).Count()} matches");
+                    Console.WriteLine($"{guid.Key} =======> {String.Join(",  ", guid.Value)} \n");
                 }
-                keys.Clear();
+                guidRefPair.Clear();
             }
         }
         private static void searchPath(DirectoryInfo di)
@@ -38,7 +37,7 @@ namespace FindGuidFinder
            
             foreach (var file in di.GetFiles())
             {
-                if (file.FullName.EndsWith("prefab") || file.FullName.EndsWith("unity")|| file.FullName.EndsWith(".asset"))
+                if (file.FullName.EndsWith("prefab") || file.FullName.EndsWith("unity") || file.FullName.EndsWith(".asset"))
                 {
                     readFile(file);
                 }
@@ -50,13 +49,19 @@ namespace FindGuidFinder
         }
         private static void readFile(FileInfo fi)
         {
-            var lines = File.ReadAllLines(fi.FullName);
-            foreach (var line in lines)
+            var lines = File.ReadAllText(fi.FullName);
+            foreach(var guid in guids)
             {
-                if (line.Contains(guid))
+                if (lines.Contains(guid))
                 {
-                    keys.Add(fi.FullName);
-                    return;
+                    if(guidRefPair.TryGetValue(guid, out List<string> value))
+                    {
+                        value.Add(fi.FullName);
+                    }
+                    else
+                    {
+                        guidRefPair[guid] = new List<string>() { fi.FullName };
+                    }
                 }
             }
         }
